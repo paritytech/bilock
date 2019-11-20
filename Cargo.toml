@@ -1,0 +1,22 @@
+[package]
+name = "bilock"
+version = "0.1.0"
+authors = ["Parity Technologies <admin@parity.io>"]
+keywords = ["async", "futures", "lock"]
+description = "A slower variant of futures's BiLock that does not allocate under contention."
+license = "Apache-2.0 OR MIT"
+readme = "README.md"
+repository = "https://github.com/twittner/bilock"
+edition = "2018"
+
+[dependencies]
+try-lock = "0.2.2"
+futures = { version = "0.3.1", optional = true }
+
+[dev-dependencies]
+criterion = "0.3"
+futures = { version = "0.3.1", features = ["unstable", "bilock"] }
+
+[[bench]]
+name = "bench"
+harness = false
