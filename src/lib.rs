@@ -6,7 +6,14 @@
 // option. All files in the project carrying such notice may not be copied,
 // modified, or distributed except according to those terms.
 
-use std::{mem, ops::{Deref, DerefMut}, sync::Arc, task::{Context, Poll, Waker}};
+use std::{
+    mem,
+    future::Future,
+    ops::{Deref, DerefMut},
+    pin::Pin,
+    sync::Arc,
+    task::{Context, Poll, Waker}
+};
 use try_lock::{TryLock, Locked};
 
 /// A synchronisation primitive between two owners.
@@ -54,9 +61,8 @@ impl<T> BiLock<T> {
     }
 
     /// Acquire a lock.
-    #[cfg(feature = "futures")]
-    pub async fn lock(&self) -> BiLockGuard<'_, T> {
-        futures::future::poll_fn(|cx: &mut Context| self.poll_lock(cx)).await
+    pub fn lock(&self) -> BiLockAcquire<'_, T> {
+        BiLockAcquire { owner: self }
     }
 }
 
@@ -97,3 +103,20 @@ impl<T> DerefMut for BiLockGuard<'_, T> {
         self.value.as_mut().unwrap()
     }
 }
+
+/// Future which eventually acquires a lock.
+#[derive(Debug)]
+pub struct BiLockAcquire<'a, T> {
+    owner: &'a BiLock<T>
+}
+
+impl<T> Unpin for BiLockAcquire<'_, T> {}
+
+impl<'a, T> Future for BiLockAcquire<'a, T> {
+    type Output = BiLockGuard<'a, T>;
+
+    fn poll(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Self::Output> {
+        self.owner.poll_lock(cx)
+    }
+}
+
